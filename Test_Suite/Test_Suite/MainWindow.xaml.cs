@@ -48,36 +48,10 @@ namespace Test_Suite
             }), DispatcherPriority.Normal);*/
         }
 
-        public void Start_test()
-        {
-            var proc = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "D:\\Trabalho\\CCode\\MDB_USB_MasterSlave\\MDB_Test_Suite\\MDB_Test_Suite\\Files\\mdb_test.exe",
-                    //FileName = "../Files/mdb_test.exe",
-                    Arguments = "--all USB0",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true
-                }
-            };
-
-            proc.Start();
-            while (!proc.StandardOutput.EndOfStream)
-            {
-                string line = proc.StandardOutput.ReadLine();
-                Debug.WriteLine(line);
-                // do something with line
-            }
-        }
-
-
-        public string[] Process_test(string arguments)
+        public string[] Start_test_with_arguments(string arguments)
         {
             List<String> lines = new List<String>();
-            //string[] lines = new string[50];
-
+            
             var proc = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -92,15 +66,11 @@ namespace Test_Suite
             };
 
             proc.Start();
-            int line_index = 0;
             while (!proc.StandardOutput.EndOfStream)
             {
-
                 lines.Add(proc.StandardOutput.ReadLine());
-                Debug.WriteLine(lines[line_index]);
-                //line_index++;
-                // do something with line
             }
+
             String[] stringArray = lines.ToArray();
 
             return stringArray;
@@ -109,7 +79,7 @@ namespace Test_Suite
 
         public void Test_RS232()
         {
-            string[] lines = Process_test("--com USB0");
+            string[] lines = Start_test_with_arguments("--com USB0");
 
             if (lines[0].Contains("[M >]M,TEST_LED") &&
                lines[1].Contains("[M <]m,ACK") &&
@@ -134,7 +104,7 @@ namespace Test_Suite
 
         public void Test_Relay()
         {
-            string[] lines = Process_test("--relay");
+            string[] lines = Start_test_with_arguments("--relay");
 
             if (lines[0].Contains("[M >]M,TEST_LED") &&
                lines[1].Contains("[M <]m,ACK") &&
@@ -159,7 +129,7 @@ namespace Test_Suite
 
         public void Test_leds()
         {
-            string[] lines = Process_test("--leds");
+            string[] lines = Start_test_with_arguments("--leds");
 
             if (lines[0].Contains("[M >]M,TEST_LED") &&
                lines[1].Contains("[M <]m,ACK") &&
@@ -214,17 +184,7 @@ namespace Test_Suite
                         break;
                 }
             }
-            try
-            {
-                Thread cThread = new Thread(Start_test);
-                cThread.Start();
-
-            }
-            catch
-            {
-                MessageBox.Show("Can't communicate with board" + Environment.NewLine + "Please check cable connection", "No communication with board", MessageBoxButton.OK, MessageBoxImage.Error);
-                timer.Stop();
-            }
+            
         }
 
         public MainWindow()
@@ -233,7 +193,17 @@ namespace Test_Suite
 
             InitializeComponent();
 
-            Start();
+            try
+            {
+                Thread cThread = new Thread(Start);
+                cThread.Start();
+
+            }
+            catch
+            {
+                MessageBox.Show("Can't communicate with board" + Environment.NewLine + "Please check cable connection", "No communication with board", MessageBoxButton.OK, MessageBoxImage.Error);
+                timer.Stop();
+            }
         }
     }
 }
