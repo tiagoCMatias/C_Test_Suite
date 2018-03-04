@@ -72,10 +72,26 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Serial_Input_Window.xaml.cs">
+    <Compile Include="Board_Class.cs" />
+    <None Include="Backup" />
+    <Compile Include="UI\ConfigurationServer_Window.xaml.cs">
+      <DependentUpon>ConfigurationServer_Window.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="States\DeviceCurrent.cs" />
+    <Compile Include="States\Leds.cs" />
+    <Compile Include="BoardTypes\MDB_BOARD.cs" />
+    <Compile Include="States\Relay.cs" />
+    <Compile Include="States\RS232.cs" />
+    <Compile Include="UI\Serial_Input_Window.xaml.cs">
       <DependentUpon>Serial_Input_Window.xaml</DependentUpon>
     </Compile>
-    <Page Include="MainWindow.xaml">
+    <Compile Include="States\SQL_Update.cs" />
+    <Compile Include="State.cs" />
+    <Page Include="UI\ConfigurationServer_Window.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -83,7 +99,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="MainWindow.xaml.cs">
+    <Compile Include="UI\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
@@ -95,7 +111,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Serial_Input_Window.xaml">
+    <Page Include="UI\Serial_Input_Window.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -145,8 +161,10 @@
     <Resource Include="docs\MySqlParameter.xml" />
     <Resource Include="docs\MySqlParameterCollection.xml" />
     <Resource Include="docs\MySqlTransaction.xml" />
+    <EmbeddedResource Include="Files\config.txt" />
     <Content Include="Files\libusb-1.0.dll" />
     <Resource Include="Files\mdb_test.exe" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

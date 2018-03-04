@@ -12,7 +12,7 @@
     Height="720" 
     Width="1004.289"
     TitlebarHeight="40" 
-    Topmost="True" Closing="MetroWindow_Closing">
+    Closing="MetroWindow_Closing">
     <DockPanel HorizontalAlignment="Stretch" Margin="40,40,20,20">
         <Grid >
             <Grid.RowDefinitions>
@@ -52,11 +52,16 @@
             </DockPanel>
             <DockPanel Grid.Row="4" Margin="5,5,5,5"  Grid.Column="0" >
                 <TextBlock Margin="10,2,2,2" Text="Serial Ports:" Width="80"></TextBlock>
-                <ComboBox SelectedIndex="0" x:Name="SerialCom" Margin="3" SelectionChanged="SerialCom_SelectionChanged" >
+                <ComboBox SelectedIndex="0" x:Name="SerialCom" Margin="3" >
                     <ComboBoxItem Name="port1" ></ComboBoxItem>
                 </ComboBox>
             </DockPanel>
-
+            <DockPanel Grid.Row="5" Margin="5,5,5,5"  Grid.Column="0" >
+                <TextBlock Margin="10,2,2,2" Text="Nucleo Port:" Width="80"></TextBlock>
+                <ComboBox SelectedIndex="0" x:Name="CurrentPort" Margin="3"  >
+                    <ComboBoxItem Name="port2" ></ComboBoxItem>
+                </ComboBox>
+            </DockPanel>
             <DockPanel Grid.Row="6"  Margin="20,20,20,20" Grid.Column="0" >
                 <Image HorizontalAlignment="Center" MinWidth="150">
 
