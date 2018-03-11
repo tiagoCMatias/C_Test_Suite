@@ -3,6 +3,7 @@ using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
@@ -21,10 +22,9 @@ namespace Test_Suite
     /// </summary>
     public partial class MainWindow : MetroWindow
     {
-
-
         MDB_BOARD MDB_Board;
-        string TABLE_NAME = "mdb_usb_ms";
+        string board_state;
+
         string server;
         string database;
         string uid;
@@ -32,67 +32,69 @@ namespace Test_Suite
         private DispatcherTimer timer;
         private Stopwatch stopWatch;
         private double time_elapsed;
-        private string observations;
         private int progress_bar_increment = 10;
-
-        public string UpdateMyBox
-        {
-            get { return test_evolution_txtbox.Text; }
-            set { test_evolution_txtbox.Text = value; }
-        }
-
-        public class Test_list_item
-        {
-            public string Name { get; set; }
-            public string Path { get; set; }
-        }
-        ObservableCollection<Test_list_item> items = new ObservableCollection<Test_list_item>();
-
+        private int error_progress_bar = 200;
 
         public MainWindow()
         {
             InitializeComponent();
             ListSerialPort();
-            MDB_Board = new MDB_BOARD(new Init_State());
             Fetch_DB_Credentials();
         }
-        
+
         private void Start_test_button_Click(object sender, RoutedEventArgs e)
         {
-            if(!CheckIfFormComplete())
+
+            if (!CheckIfFormComplete())
             {
                 MessageBox.Show("Please select all itens correctly", "Wrong Fields", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
                 SetStartButtonState(true);
                 return;
             }
+            MDB_Board = new MDB_BOARD(new Init_State())
+            {
+                BoardOperator = operator_txtbox.Text,
+                BoardWorkstation = combo_workStation.Text,
+                SerialNumber = GetSerialNumber(),
+                BoardErrorDescription = "No Errors"
+            };
+            MDB_Board.ConnectToMysql(server, database, uid, password);
 
-            MDB_Board.BoardOperator = operator_txtbox.Text;
-            MDB_Board.SerialNumber = GetSerialNumber();
-
-
+            //Check for a Valid DB Connection - Error Exit Program
+            if (!UpdateDBConnectionBox())
+            {
+                MessageBox.Show("Error Connecting to Database", "Check Database configuration", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
+                SetStartButtonState(true);
+                return;
+            }
+            //Check for a valid Serial Number or a Repeated One - Error Exit Program
             if (String.IsNullOrEmpty(MDB_Board.SerialNumber) || MDB_Board.CheckRepeatedTest())
             {
                 MessageBox.Show("Error In Serial Number", "Repeated Serial Number", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
                 SetStartButtonState(true);
                 return;
             }
-
+            //So far so good...
             ResetProgressBar();
+            //Assign Serial Communication Ports
             MDB_Board.RS232Port = SerialCom.SelectedItem.ToString();
             MDB_Board.NucleoSerialCommunication(CurrentPort.SelectedItem.ToString());
+            //Validate Serial Ports - Error Exit Program
             if (!MDB_Board.CorrectPortConfig())
             {
-                
-                //Debug.WriteLine("Porta: "+ MDB_Board.SerialPort);
                 MDB_Board.CloseSerialPort();
                 MessageBox.Show("Wrong Port Selection", "Wrong Fields", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
                 SetStartButtonState(true);
                 return;
             }
-            MDB_Board.SetUSBSupply();
+            //Set Correct Power Supply
+            MDB_Board.SetMDBSupply();
+            //Everything is Ok
+            //Start Testing with scripts in a Thread
             try
             {
-                ResetListBox();
+                MDB_Board.InitializeList();
+                test_list.ItemsSource = MDB_Board.list_itens;
                 UpdateTextEvolution(Environment.NewLine + "---------------------------");
                 StartTimer();
                 Thread Test_Thread = new Thread(() => MDB_Board.StartTesting());
@@ -104,12 +106,10 @@ namespace Test_Suite
                 MessageBox.Show("Can't communicate with board" + Environment.NewLine + "Please check cable connection", "No communication with board", MessageBoxButton.OK, MessageBoxImage.Error);
                 timer.Stop();
             }
-            
         }
 
         private string GetSerialNumber()
         {
-            //Get Serial Number
             SetStartButtonState(false);
             Serial_Input_Window serialWindow = new Serial_Input_Window();
 
@@ -126,7 +126,6 @@ namespace Test_Suite
                 SetStartButtonState(true);
                 return null;
             }
-            //MDB_BOARD.SerialNumber = this.SerialNumber;
             return SerialNumber;
         }
 
@@ -140,51 +139,20 @@ namespace Test_Suite
 
         private bool CheckIfFormComplete()
         {
-            if (string.IsNullOrWhiteSpace(operator_txtbox.Text) || combo_workStation.SelectedItem == null || SerialCom.SelectedItem == null || CurrentPort.SelectedItem == null)
+            if (string.IsNullOrWhiteSpace(operator_txtbox.Text) || combo_workStation.SelectedItem == null || SerialCom.SelectedItem == null || CurrentPort.SelectedItem == null || SerialCom.SelectedItem == CurrentPort.SelectedItem)
                 return false;
             else
                 return true;
         }
-
-        private void UpdateState(Test_list_item estado_teste, bool state, int index)
-        {
-            if(state)
-            {
-                UpdateProgressBar(progress_bar_increment);
-                //fazer get do name da test
-                UpdateTextEvolution(estado_teste.Name + " Passed");
-                UpdateList(index, estado_teste.Name, true);
-            }
-            else
-            {
-                UpdateProgressBar(200);
-                //fazer get do name da test
-                UpdateTextEvolution(estado_teste.Name + " Failed");
-                UpdateList(index, estado_teste.Name, false);
-            }
-        }
-
-        //MainWindow Listbox reset
-        private void ResetListBox()
-        {
-            Dispatcher.Invoke(new Action(() =>
-            {
-                test_list.Items.Clear();
-                test_list.Items.Insert(0, new Test_list_item() { Name = "USB PORT B", Path = null, });
-                test_list.Items.Insert(1, new Test_list_item() { Name = "LEDS", Path = null, });
-                test_list.Items.Insert(2, new Test_list_item() { Name = "RELAY", Path = null, });
-                test_list.Items.Insert(3, new Test_list_item() { Name = "Serial Port", Path = null, });
-                test_list.Items.Insert(4, new Test_list_item() { Name = "DEVICE CURRENT", Path = null, });
-                test_list.Items.Insert(5, new Test_list_item() { Name = "USB PORT A", Path = null, });
-            }), DispatcherPriority.Normal);
-        }
-        
+  
         //Application Timer
         public void StartTimer()
         {
-            timer = new DispatcherTimer();
+            timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(0.01)
+            };
             timer.Tick += DispatcherTimerTick_;
-            timer.Interval = new TimeSpan(0, 0, 0, 0, 1);
             stopWatch = new Stopwatch();
             stopWatch.Start();
             timer.Start();
@@ -195,54 +163,38 @@ namespace Test_Suite
         {
             Dispatcher.Invoke(new Action(() =>
             {
-                /*
-                if(mdb_state != MDB_Board.State.ToString())
-                {
-                    mdb_state = MDB_Board.State.ToString();
-                    Debug.WriteLine(mdb_state);
-                    //UpdateTextEvolution(MDB_Board.State.message);
-                    //UpdateL(MDB_Board.LastTestNumber, MDB_Board.LastTestResult);
-                    //if (MDB_Board.LastTestResult && !mdb_state.Contains("FinishState"))
-                    //    UpdateProgressBar(progress_bar_increment);
-                    //else
-                    //    UpdateProgressBar(200);
-                    if(mdb_state.Contains("ErrorState"))
-                    {
-                        UpdateProgressBar(200);
-                    }
-                    else if(!mdb_state.Contains("FinishState"))
-                    {
-                        UpdateProgressBar(progress_bar_increment);
-                    }
-                }
-                if (mdb_state.Contains("FinishState")|| mdb_state.Contains("ErrorState"))
-                    SetStartButtonState(true);
-                    */
+
                 time_elapsed = TimeSpan.Parse(stopWatch.Elapsed.ToString()).TotalSeconds;
                 test_time_lbl.Text = TimeSpan.FromSeconds(stopWatch.Elapsed.TotalSeconds).ToString(@"hh\:mm\:ss");
-            }), DispatcherPriority.Normal);
-            /*
-            if(check_connection == false && time_elapsed > 15)
+            }));
+            Thread.Sleep(1);
+
+            if (board_state != MDB_Board.State.ToString())
             {
-                time_elapsed = 0;
-                check_connection = true;
-                observations = "Cant communicate";
-                UpdateTextEvolution("ERROR");
-                STM_Board_Test = STM.ERROR;
-                Process[] runingProcess = Process.GetProcesses();
-                for (int i = 0; i < runingProcess.Length; i++)
-                {
-                    if (runingProcess[i].ProcessName == "mdb_test")
-                    {
-                        runingProcess[i].Kill();
-                    }
-
+                MDB_Board.BoardTime = DateTime.Now + " - " + TimeSpan.FromSeconds(stopWatch.Elapsed.TotalSeconds).ToString(@"hh\:mm\:ss");
+                board_state = MDB_Board.State.ToString();
+                UpdateTextEvolution(MDB_Board.UpdateMessage);
+                test_list.ItemsSource = null;
+                test_list.ItemsSource = MDB_Board.list_itens;
+                if (!board_state.Contains("SQL") && !board_state.Contains("Error") && !board_state.Contains("Finish"))
+                    UpdateProgressBar(progress_bar_increment);
+                if(MDB_Board.BoardTestStatus == 1)
+                {   
+                    UpdateProgressBar(100);
                 }
-                UpdateList(0, "USB PORT B", false);
-
-                Debug.WriteLine("Passed 15secs and no communication");
             }
-            */
+            if(board_state.Contains("Error"))
+            {
+                UpdateProgressBar(error_progress_bar);
+            }
+            if (board_state.Contains("Finish"))
+            {
+                SetStartButtonState(true);
+                if (MDB_Board.DB_Connection != null && MDB_Board.DB_Connection.State == ConnectionState.Open)
+                    MDB_Board.DB_Connection.Close();
+                timer.Stop();
+            }
+                
         }
 
         public bool IsDigitsOnly(string str)
@@ -288,7 +240,7 @@ namespace Test_Suite
         /*** Progress Bar  ***/
         public void UpdateProgressBar(int progress_bar_inc)
         {
-            if(progress_bar_inc > 100)
+            if(progress_bar_inc == error_progress_bar)
             {
                 Dispatcher.Invoke(new Action(() =>
                 {
@@ -330,41 +282,19 @@ namespace Test_Suite
         /** Closing Definitions **/
         private void MetroWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if(MDB_Board.NucleoPort.IsOpen)
-                MDB_Board.NucleoPort.Close();
-            Thread.Sleep(100);
-        }
-
-        public void UpdateList(int index_list, string text_to_update, bool test_status)
-        {
-            Dispatcher.Invoke(new Action(() =>
+            try
             {
-                if (test_list.Items.Count == 0)
-                    return;
-                test_list.Items.RemoveAt(index_list);
-                test_list.Items.Insert(index_list, new Test_list_item() { Name = text_to_update, Path = (test_status) ? @"../images/pass.png" : @"../images/fail.png" });
-            }), DispatcherPriority.Normal);
-        }
-
-        public void UpdateL(int index_list, bool test_status)
-        {
-            Dispatcher.Invoke(new Action(() =>
+                if (MDB_Board.NucleoPort != null)
+                    MDB_Board.NucleoPort.Close();
+                if (MDB_Board.DB_Connection != null && MDB_Board.DB_Connection.State == ConnectionState.Open)
+                    MDB_Board.DB_Connection.Close();
+            }
+            catch (Exception exc)
             {
-                if (test_list.Items.Count == 0)
-                    return;
-                test_list.Items.RemoveAt(index_list);
-                string text_to_update = null;
-                switch (index_list)
-                {
-                    case 0: text_to_update = "USB PORT B"; break;
-                    case 1: text_to_update = "LEDS"; break;
-                    case 2: text_to_update = "RELAY"; break;
-                    case 3: text_to_update = "Serial Port"; break;
-                    case 4: text_to_update = "DEVICE CURRENT"; break;
-                    case 5: text_to_update = "USB PORT A"; break;
-                }
-                test_list.Items.Insert(index_list, new Test_list_item() { Name = text_to_update, Path = (test_status) ? @"../images/pass.png" : @"../images/fail.png" });
-            }), DispatcherPriority.Normal);
+                Debug.WriteLine("Erro Closing " + exc.Message);
+            }
+            
+            Thread.Sleep(1000);
         }
 
         private void ListSerialPort()
@@ -378,15 +308,19 @@ namespace Test_Suite
             }
         }
 
-        private void UpdateDBConnectionTxtBox(bool state)
+        private bool UpdateDBConnectionBox()
         {
-            if(state)
+            if (MDB_Board.DB_Connection != null && MDB_Board.DB_Connection.State == ConnectionState.Closed)
+                MDB_Board.ConnectToMysql(server, database, uid, password);
+            if (MDB_Board.DB_Connection != null && MDB_Board.DB_Connection.State == ConnectionState.Open)
             {
+                
                 Dispatcher.Invoke(new Action(() =>
                 {
                     db_status_txtbox.Background = new SolidColorBrush(Color.FromArgb(0xCC, 0x11, 0x9E, 0xDA)); //#CC119EDA
                     db_status_txtbox.Foreground = Brushes.White;
                 }), DispatcherPriority.Background);
+                return true;
             }
             else
             {
@@ -394,10 +328,10 @@ namespace Test_Suite
                 {
                     db_status_txtbox.Background = Brushes.Red;
                 }), DispatcherPriority.Background);
+                return false;
             }
         }
 
-        
         //Fetch database credentials
         private void Fetch_DB_Credentials()
         {
@@ -423,7 +357,7 @@ namespace Test_Suite
                 password = fileLines[3].Split('=', ';')[1];
                 password = Regex.Replace(password, @"\s+", " ");
 
-                UpdateTextEvolution("Configuration File" + Environment.NewLine +
+                UpdateTextEvolution(Environment.NewLine + "Configuration File" + Environment.NewLine +
                     "Server: " + server + Environment.NewLine +
                     "Database: " + database + Environment.NewLine +
                     "Uid:" + uid + Environment.NewLine +
@@ -431,7 +365,7 @@ namespace Test_Suite
 
                 reader.Close();
 
-                MDB_Board.ConnectToMysql(server, database, uid, password);
+                
             }
             catch(Exception e)
             {

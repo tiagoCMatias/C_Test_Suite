@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Windows;
 
 namespace Test_Suite
@@ -9,14 +10,24 @@ namespace Test_Suite
         public override void GoToNextState(MDB_BOARD board, bool state)
         {
             state_number = 1;
-            //board.LastTestNumber = state_number;
-            //board.UpdateMessageResult = state ? "Leds Test Passed" : "Leds Test Failed";
-            //board.LastTestResult = state;
+            board.UpdateList(0, state);
+            board.UpdateList(state_number, state);
+
+
+            board.test_result[0] = state ? 1 : 0;
+            board.test_result[state_number] = state ? 1 : 0;
 
             if (state)
+            {
+                board.UpdateMessage = "Leds Test Passed";
                 board.State = new RelayState();
+            }
             else
+            {
+                board.BoardErrorDescription = "Leds Test Failed";
+                board.UpdateMessage = "Leds Test Failed";
                 board.State = new ErrorState();
+            }
         }
 
         public override void Handle(MDB_BOARD board)
@@ -26,37 +37,46 @@ namespace Test_Suite
             response = MessageBox.Show("Starting Leds Test\n Are you ready?", "Question", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (response == MessageBoxResult.Yes)
             {
-                string[] lines = board.Start_script("--leds");
-                if (lines.Length >= 10 &&
-                    lines[0].Contains("[M >]M,TEST_LED") &&
-                    lines[1].Contains("[M <]m,ACK") &&
-                    lines[2].Contains("[M <]checking LEDs...") &&
-                    lines[3].Contains("[M <]1") &&
-                    lines[4].Contains("[M <]2") &&
-                    lines[5].Contains("[M <]3") &&
-                    lines[6].Contains("[M <]4") &&
-                    lines[7].Contains("[M <]all") &&
-                    lines[8].Contains("[M <]-------------------------") &&
-                    lines[9].Contains("- closing mdb connection"))
+                try
                 {
-                    response = MessageBox.Show("Leds ok?", "Question", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (response == MessageBoxResult.Yes)
+                    string[] lines = board.Start_script("--leds");
+                    if (lines.Length >= 10 &&
+                        lines[0].Contains("[M >]M,TEST_LED") &&
+                        lines[1].Contains("[M <]m,ACK") &&
+                        lines[2].Contains("[M <]checking LEDs...") &&
+                        lines[3].Contains("[M <]1") &&
+                        lines[4].Contains("[M <]2") &&
+                        lines[5].Contains("[M <]3") &&
+                        lines[6].Contains("[M <]4") &&
+                        lines[7].Contains("[M <]all") &&
+                        lines[8].Contains("[M <]-------------------------") &&
+                        lines[9].Contains("- closing mdb connection"))
                     {
-                        Debug.WriteLine("Nice");
-                        GoToNextState(board, true);
+                        response = MessageBox.Show("Leds ok?", "Question", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                        if (response == MessageBoxResult.Yes)
+                        {
+                            //Debug.WriteLine("Nice");
+                            GoToNextState(board, true);
 
+                        }
+                        else
+                        {
+                            //Debug.WriteLine("Fail");
+                            GoToNextState(board, false);
+                        }
                     }
                     else
                     {
-                        Debug.WriteLine("Fail");
-                        GoToNextState(board, false);                        
+                        Debug.WriteLine("Leds Fail");
+                        GoToNextState(board, false);
                     }
                 }
-                else
+                catch(Exception e)
                 {
-                    Debug.WriteLine("Leds Fail");
-                    GoToNextState(board, false);                    
+                    GoToNextState(board, false);
+                    Debug.WriteLine("Leds Fail - Exception: " + e.Message);
                 }
+                
             }
             else
             {

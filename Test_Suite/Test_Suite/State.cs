@@ -11,8 +11,6 @@ namespace Test_Suite
 {
     abstract class State
     {
-        public string message;
-        public bool status;
         public int state_number;
         public abstract void Handle(MDB_BOARD board);
         public abstract void GoToNextState(MDB_BOARD board, bool state);
@@ -29,7 +27,7 @@ namespace Test_Suite
             //board.UpdateMessageResult = state ? "Board Initialized" : "Failed to Initialize board";
             //board.LastTestResult = state;
 
-            message = "";
+            
 
             state_number = 0;
             if(state)
@@ -58,7 +56,9 @@ namespace Test_Suite
 
         public override void Handle(MDB_BOARD board)
         {
-            Thread.Sleep(500);
+            Thread.Sleep(1000);
+            board.UpdateMessage = "Error detected during testing";
+            Thread.Sleep(1000);
             Debug.WriteLine("ERROR");
             if(board.NucleoPort.IsOpen)
                 board.CloseSerialPort();

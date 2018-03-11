@@ -12,13 +12,26 @@ namespace Test_Suite
     class MDB_BOARD : Board_Class
     {
         private State _state;
+        private string relayOn = "PA_5 + PA_7 Off";
+        private string relayOff = "PA_5 + PA_7 On";
+        private string connectionString;
 
         public SerialPort NucleoPort { get; set; }
         public string RS232Port { get; set; }
         public bool MDB_MOD { get; set; }
         public string NucleoMessage { get; set; }
-        private MySqlConnection db_con;
+        public MySqlConnection DB_Connection { get; set; }
         public string SqlTable = "mdb_usb_ms";
+        public string UpdateMessage { get; set; }
+        public int[] test_result = new int[6];
+
+        public List<Test_list_item> list_itens = new List<Test_list_item>();
+
+        public class Test_list_item
+        {
+            public string Name { get; set; }
+            public string Path { get; set; }
+        }
 
 
         public MDB_BOARD(State state)
@@ -26,14 +39,39 @@ namespace Test_Suite
             this.State = state;
         }
 
-        public List<State_result> StateTestResult { get; set; }
-
         public State State
         {
             get { return _state; }
             set { _state = value; }
         }
 
+        public void InitializeList()
+        {
+            list_itens.Clear();
+            list_itens.Insert(0, new Test_list_item() { Name = "USB PORT B", Path = null, });
+            list_itens.Insert(1, new Test_list_item() { Name = "LEDS", Path = null, });
+            list_itens.Insert(2, new Test_list_item() { Name = "RELAY", Path = null, });
+            list_itens.Insert(3, new Test_list_item() { Name = "Serial Port", Path = null, });
+            list_itens.Insert(4, new Test_list_item() { Name = "DEVICE CURRENT", Path = null, });
+            list_itens.Insert(5, new Test_list_item() { Name = "USB PORT A", Path = null, });
+        }
+
+        public void UpdateList(int index_list, bool test_status)
+        {
+            if (list_itens.Count > 0)
+                list_itens.Remove(list_itens[index_list]);
+            string text_to_update = null;
+            switch (index_list)
+            {
+                case 0: text_to_update = "USB PORT B"; break;
+                case 1: text_to_update = "LEDS"; break;
+                case 2: text_to_update = "RELAY"; break;
+                case 3: text_to_update = "Serial Port"; break;
+                case 4: text_to_update = "DEVICE CURRENT"; break;
+                case 5: text_to_update = "USB PORT A"; break;
+            }
+            list_itens.Insert(index_list, new Test_list_item() { Name = text_to_update, Path = (test_status) ? @"../images/pass.png" : @"../images/fail.png" });
+        }
 
         public override void StartTesting()
         {
@@ -45,7 +83,7 @@ namespace Test_Suite
         {
             try
             {
-                if (NucleoPort == null)
+                if (NucleoPort == null || !NucleoPort.IsOpen)
                 {
                     NucleoPort = new SerialPort(comPort, 9600, Parity.None, 8, StopBits.One);
                     NucleoPort.DataReceived += new SerialDataReceivedEventHandler(ReceiveFromNucleo);
@@ -90,15 +128,13 @@ namespace Test_Suite
             {
                 SerialPort sp = (SerialPort)sender;
                 string indata = sp.ReadLine();
-                this.NucleoMessage = indata;
+                NucleoMessage = indata;
                 Debug.WriteLine(indata);
             }
             catch (Exception excep)
             {
                 Debug.WriteLine("Exception:" + excep.Message);
             }
-
-            //ValidateMessage(indata);
         }
 
         public void CloseSerialPort()
@@ -110,38 +146,49 @@ namespace Test_Suite
             }
         }
 
-        public void SetMDBSupply()
+        public void SetUSBSupply()
         {
             if (NucleoPort != null && NucleoPort.IsOpen)
             {
+                //turn off relay send "2"
+                NucleoMessage = "";
+                Thread.Sleep(1500);
                 SendToNucleo("2");
                 Thread.Sleep(100);
 
-                if (NucleoMessage.Contains("PA_5 + PA_7 On"))
+                if (NucleoMessage.Contains(relayOff))
                 {
-                    MDB_MOD = true;
+                    Debug.WriteLine("MDB_MOD false");
+                    MDB_MOD = false;
                 }
                 else
                 {
-                    MDB_MOD = false;
+                    Debug.WriteLine("MDB_MOD true");
+                    MDB_MOD = true;
                 }
 
             }
         }
 
-        public void SetUSBSupply()
+        public void SetMDBSupply()
         {
             if (NucleoPort != null && NucleoPort.IsOpen)
             {
+                //turn on relay send "6"
+                NucleoMessage = "";
+                Thread.Sleep(1500);
                 SendToNucleo("6");
-                Thread.Sleep(100);
 
-                if (NucleoMessage.Contains("PA_5 + PA_7 Off"))
+                Thread.Sleep(1000);
+
+                if (NucleoMessage.Contains(relayOn))
                 {
+                    Debug.WriteLine("MDB_MOD true");
                     MDB_MOD = true;
                 }
                 else
                 {
+                    Debug.WriteLine("MDB - false");
                     MDB_MOD = false;
                 }
 
@@ -152,13 +199,16 @@ namespace Test_Suite
         {
             try
             {
-                string connectionString = "SERVER=" + server + ";" + "DATABASE=" +
+                connectionString = "SERVER=" + server + ";" + "DATABASE=" +
                 database + ";" + "Uid=" + uid + ";" + "PASSWORD=" + password + ";";
                 //Connection
-                db_con = new MySqlConnection(connectionString);
-                db_con.Open();
+                DB_Connection = new MySqlConnection(connectionString);
+                DB_Connection.Open();
 
                 Thread.Sleep(100);
+
+
+                //DB_Connection.Close();
 
                 return true;
             }
@@ -175,18 +225,18 @@ namespace Test_Suite
         {
             try
             {
-                if (db_con != null && db_con.State == ConnectionState.Open)
+                if (DB_Connection != null && DB_Connection.State == ConnectionState.Open)
                 {
-                    MySqlCommand command = db_con.CreateCommand();
+                    MySqlCommand command = DB_Connection.CreateCommand();
                     command.CommandText = "SELECT * FROM " + SqlTable + " WHERE sn=" + SerialNumber + " AND test_flag=1;";
                     MySqlDataReader reader = command.ExecuteReader();
 
                     if (reader.Read() && reader["sn"].ToString().Contains(SerialNumber))
                     {
-                        db_con.Close();
+                        DB_Connection.Close();
                         return true;
                     }
-                    db_con.Close();
+                    DB_Connection.Close();
                     return false;
                 }
                 else
@@ -205,27 +255,28 @@ namespace Test_Suite
         {
             try
             {
-                var usb_b = StateTestResult[0];
-                var usb_a = StateTestResult[1];
-                var relay = StateTestResult[2];
-                var test_current = StateTestResult[3];
-                var leds = StateTestResult[4];
-                var rs232 = StateTestResult[5];
-                var observations = "Something";
-                if (db_con != null && db_con.State == ConnectionState.Open)
-                {
-                    MySqlCommand command = db_con.CreateCommand();
-                    command.CommandText = "INSERT INTO " + SqlTable + " ( `operator`, `sn`, `workstation`, `test_time`, `test_flag`, `usb_type_b`, " +
-                        "`usb_type_a`, `relay`, `rs232`, `device_current`, `test_error`, `test_leds`) VALUES (" +
-                        "'" + BoardOperator + "', '" + SerialNumber + "', '" + BoardWorkstation + "', '" + BoardTime + "', '" + BoardTestStatus + "', '" + usb_a +
-                        "' , '" + usb_b + "', '" + relay + "', '" + rs232 + "', '" + test_current + "', '" + observations + "', '" + leds + "');";
+                var usb_b = test_result[0];
+                var usb_a = test_result[5];
+                var relay = test_result[2];
+                var test_current = test_result[4];
+                var leds = test_result[1];
+                var rs232 = test_result[3];
 
-                    command.ExecuteNonQuery();
+                DB_Connection = new MySqlConnection(connectionString);
+                DB_Connection.Open();
 
-                    db_con.Close();
+                MySqlCommand command = DB_Connection.CreateCommand();
+                command.CommandText = "INSERT INTO " + SqlTable + " ( `operator`, `sn`, `workstation`, `test_time`, `test_flag`, `usb_type_b`, " +
+                    "`usb_type_a`, `relay`, `rs232`, `device_current`, `test_error`, `test_leds`) VALUES (" +
+                    "'" + BoardOperator + "', '" + SerialNumber + "', '" + BoardWorkstation + "', '" + BoardTime + "', '" + BoardTestStatus + "', '" + usb_a +
+                    "' , '" + usb_b + "', '" + relay + "', '" + rs232 + "', '" + test_current + "', '" + BoardErrorDescription + "', '" + leds + "');";
 
-                    Debug.WriteLine(command.CommandText);
-                }
+                Debug.WriteLine(command.CommandText);
+                    
+                command.ExecuteNonQuery();
+
+                //DB_Connection.Close();
+
             }
             catch (Exception e)
             {
@@ -233,11 +284,5 @@ namespace Test_Suite
             }
         }
 
-    }
-
-    public class State_result
-    {
-        public string Name { get; set; }
-        public bool Result { get; set; }
     }
 }

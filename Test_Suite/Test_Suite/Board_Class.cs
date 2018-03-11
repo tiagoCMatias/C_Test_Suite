@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace Test_Suite
 {
@@ -19,7 +20,8 @@ namespace Test_Suite
         public string BoardTime { get; set; }
         public string BoardCurrent { get; set; }
         public string BoardWorkstation { get; set; }
-        public bool BoardTestStatus { get; set; }
+        public string BoardErrorDescription { get; set; }
+        public int BoardTestStatus { get; set; }
 
        
         public class Test_types
@@ -43,7 +45,7 @@ namespace Test_Suite
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = "D:\\Trabalho\\CCode\\MDB_USB_MasterSlave\\C_Test_Suite\\Test_Suite\\Test_Suite\\Files\\mdb_test.exe",
+                    FileName = @"Files/mdb_test.exe",
                     //FileName = Path.GetFullPath(@"..\\Files\\mdb_test.exe"),
                     Arguments = arguments,
                     UseShellExecute = false,
@@ -53,20 +55,20 @@ namespace Test_Suite
             };
             string line;
             proc.Start();
+            if (!proc.WaitForExit(20000)) //20 seconds timeout
+            {
+               
+                MessageBox.Show("No MDB Board Communication", "Check Cable Connection", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
+                Debug.WriteLine("Kill Process");
+                proc.Kill();
+            }
             while (!proc.StandardOutput.EndOfStream)
             {
                 line = proc.StandardOutput.ReadLine();
-                if (line.Contains("Error while"))
-                {
+                lines.Add(line);
+
+                if(proc.TotalProcessorTime.TotalSeconds > 15)
                     proc.Kill();
-
-                    break;
-                }
-                else
-                {
-
-                    lines.Add(line);
-                }
             }
             String[] stringArray = lines.ToArray();
             return stringArray;
@@ -75,9 +77,6 @@ namespace Test_Suite
         public abstract bool ConnectToMysql(string server, string database, string uid, string password);
         public abstract bool CheckRepeatedTest();
         public abstract void InsertTestResult();
-
-
-
 
     }
 }
