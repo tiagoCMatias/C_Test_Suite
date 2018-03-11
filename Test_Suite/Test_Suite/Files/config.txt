@@ -1,0 +1,4 @@
+Server = localhost;
+Database = mdb_usb;
+Uid = root;
+Password = 123Cardoso321;
