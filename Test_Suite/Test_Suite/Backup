@@ -1,0 +1,375 @@
+﻿/*
+        //begin script
+        public string[] Start_test_with_arguments(string arguments)
+        {
+
+            List<String> lines = new List<String>();
+            
+            var proc = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "D:\\Trabalho\\CCode\\MDB_USB_MasterSlave\\C_Test_Suite\\Test_Suite\\Test_Suite\\Files\\mdb_test.exe",
+                    //FileName = Path.GetFullPath(@"..\\Files\\mdb_test.exe"),
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            string line;
+            proc.Start();
+            while (!proc.StandardOutput.EndOfStream)
+            {
+                line = proc.StandardOutput.ReadLine();
+                if (line.Contains("Error while"))
+                {
+                    proc.Kill();
+                    //Process.Start("cmd", "taskkill /im mdb_test.exe /f");
+                    UpdateTextEvolution("Si fudeu");
+                    STM_Board_Test = STM.ERROR;
+                    break;
+                }
+                else
+                {
+                    UpdateList(0, "USB PORT B", true);
+                    lines.Add(line);
+                }
+            }
+
+            String[] stringArray = lines.ToArray();
+
+            return stringArray;
+        }
+
+        public void Test_RS232()
+        {
+            CheckMDBCon(false);
+
+            bool passed = true;
+            string comPort = "";
+            Dispatcher.Invoke(new Action(() =>
+            {
+                comPort = SerialCom.Text;
+            }), DispatcherPriority.Background);
+            string[] lines = Start_test_with_arguments("--com " + comPort);
+
+            for(int i = 0; i < lines.Length; i++)
+            {
+                if(lines[i].Contains("FAILED"))
+                {
+                    if (lines[i - 1].Contains("SERIAL"))
+                        observations = "Serial failed";
+                    else if(lines[i - 1].Contains("[M <]checking MDB S -> M"))
+                        observations = "MDB Slave to Master Failed";
+                    else if (lines[i - 1].Contains("[M <]checking MDB S -> M"))
+                        observations = "MDB Master to Slave Failed";
+
+                    STM_Board_Test = STM.ERROR;
+                    passed = false;
+                }
+            }
+
+            if(passed)
+            {
+                new_board.test_rs232 = 1;
+                CheckMDBCon(true);
+
+                UpdateList(3, "RS232", true);
+                UpdateProgressBar(progress_bar_increment);
+                UpdateTextEvolution("RS232 Test Passed");
+                STM_Board_Test++;
+            }
+            else
+            {
+                new_board.test_rs232 = 0;
+                CheckMDBCon(true);
+
+                UpdateList(3, "RS232", false);
+                observations = "RS232 Test Failed";
+                UpdateProgressBar(200);
+                UpdateTextEvolution("RS232 Test Failed");
+            }
+        }
+
+        public void Test_Relay()
+        {
+            CheckMDBCon(false);
+
+            string[] lines = Start_test_with_arguments("--relay");
+
+            if (lines.Length >= 9 &&
+                lines[0].Contains("[M >]M,TEST_REL") &&
+               lines[1].Contains("[M <]m,ACK") &&
+               lines[2].Contains("[M <]checking RELAY...") &&
+               lines[3].Contains("[M <]ON") &&
+               lines[4].Contains("[M <]OFF") &&
+               lines[5].Contains("[M <]ON") &&
+               lines[6].Contains("[M <]OFF") &&
+               lines[7].Contains("[M <]-------------------------") &&
+               lines[8].Contains("- closing mdb connection"))
+            {
+                new_board.test_relay = 1;
+                CheckMDBCon(true);
+
+                UpdateList(2, "RELAY", true);
+                UpdateProgressBar(progress_bar_increment);
+                UpdateTextEvolution("Relay Test Passed");
+                STM_Board_Test = STM.RS232;
+            }
+            else
+            {
+                new_board.test_relay = 0;
+                CheckMDBCon(true);
+                UpdateList(2, "RELAY", false);
+                UpdateProgressBar(200);
+                observations = "Relay Fail";
+                Debug.WriteLine("Relay Fail");
+                STM_Board_Test = STM.ERROR;
+            }
+        }
+
+        public void Test_leds()
+        {
+            CheckMDBCon(false);
+
+            MessageBoxResult response = MessageBoxResult.No;
+            Dispatcher.Invoke(new Action(() =>
+            {
+                response = MessageBox.Show("Starting Leds Test\n Are you ready?", "Question", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            }), DispatcherPriority.Background);
+            if (response == MessageBoxResult.Yes)
+            {
+                UpdateTextEvolution("Test Leds Started");
+                string[] lines = Start_test_with_arguments("--leds");
+
+                if (lines.Length >= 10 &&
+                    lines[0].Contains("[M >]M,TEST_LED") &&
+                    lines[1].Contains("[M <]m,ACK") &&
+                    lines[2].Contains("[M <]checking LEDs...") &&
+                    lines[3].Contains("[M <]1") &&
+                    lines[4].Contains("[M <]2") &&
+                    lines[5].Contains("[M <]3") &&
+                    lines[6].Contains("[M <]4") &&
+                    lines[7].Contains("[M <]all") &&
+                    lines[8].Contains("[M <]-------------------------") &&
+                    lines[9].Contains("- closing mdb connection"))
+                {
+                    CheckMDBCon(true);
+
+                    Dispatcher.Invoke(new Action(() =>
+                    {
+                        response = MessageBox.Show("Leds ok?", "Question", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    }), DispatcherPriority.Background);
+                    if (response == MessageBoxResult.Yes)
+                    {
+                        new_board.test_leds = 1;
+                        UpdateList(1, "LEDS", true);
+                        UpdateProgressBar(progress_bar_increment);
+                        UpdateTextEvolution("Leds Test Passed");
+                        STM_Board_Test = STM.RELAY;
+                    }
+                    else
+                    {
+                        new_board.test_leds = 0;
+                        UpdateList(1, "LEDS", false);
+                        UpdateProgressBar(200);
+                        observations = "Leds Fail";
+                        UpdateTextEvolution("Leds Test Failed by user");
+                        STM_Board_Test = STM.ERROR;
+                    }
+                }
+                else
+                {
+                    new_board.test_leds = 0;
+                    CheckMDBCon(true);
+                    UpdateList(1, "LEDS", false);
+                    UpdateProgressBar(200);
+                    observations = "Leds Fail";
+
+                    Debug.WriteLine("Leds Fail");
+                    STM_Board_Test = STM.ERROR;
+                }
+            }
+            else
+            {
+                CheckMDBCon(true);
+                UpdateList(1, "LEDS", false);
+                UpdateProgressBar(200);
+                UpdateTextEvolution("Leds Test Canceled");
+                STM_Board_Test = STM.ERROR;
+            }
+        }
+
+        private void Test_Device_Current()
+        {
+            check_connection = false;
+            SendToNucleo("1");
+
+            if (!string.IsNullOrEmpty(consumo_corrent))
+            {
+                new_board.test_current = consumo_corrent.ToString();
+                CheckMDBCon(true);
+                UpdateList(5, "DEVICE CURRENT", true);
+                UpdateProgressBar(progress_bar_increment);
+                UpdateTextEvolution("DEVICE CURRENT Passed - " + consumo_corrent + "A");
+                STM_Board_Test = STM.FINISH;
+            }
+            else
+            {
+                new_board.test_current = "";
+                CheckMDBCon(true);
+                UpdateList(5, "DEVICE CURRENT", false);
+                UpdateProgressBar(200);
+                UpdateTextEvolution("DEVICE CURRENT Failed");
+                STM_Board_Test = STM.ERROR;
+            }
+
+
+            Debug.WriteLine("Corrent: " + consumo_corrent);
+        }
+
+        private void CheckMDBCon(bool state)
+        {
+            if (state)
+            {
+                check_connection = true;
+                time_elapsed = 0;
+            }
+            else
+            {
+                check_connection = false;
+            }
+        }
+
+        private void NucleoSerialCommunication()
+        {
+            try
+            {
+                Dispatcher.Invoke(new Action(() =>
+                {
+                    if (nuclePort == null)
+                    {
+                        nuclePort = new SerialPort(CurrentPort.SelectedItem.ToString(), 9600, Parity.None, 8, StopBits.One);
+                        nuclePort.DataReceived += new SerialDataReceivedEventHandler(ReceiveFromNucleo);
+
+                        nuclePort.Open();
+                    }
+                }), DispatcherPriority.Normal);
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("Exception: " + e.Message);
+            }
+            
+        }
+
+        private void SendToNucleo(string data)
+        {
+            try
+            {
+                nuclePort.WriteLine(data);
+            }
+            catch(Exception e)
+            {
+                Debug.WriteLine("Exception: "+ e.Message);
+            }
+        }
+
+        private void ReceiveFromNucleo(object sender, SerialDataReceivedEventArgs e)
+        {
+            SerialPort sp = (SerialPort)sender;
+            string indata = sp.ReadLine();
+            Debug.WriteLine(indata);
+            ValidateMessage(indata);
+        }
+
+        private void ValidateMessage(string data)
+        {
+            if (data.Contains("measure"))
+            {
+                string[] tokens = data.Split(':');
+                if (tokens.Length > 1)
+                {
+                    consumo_corrent = tokens[1].ToString();
+                    //UpdateTextEvolution("Consumo de Corrente: " + tokens[3].ToString());
+                    Debug.WriteLine("Consumo de Corrente: " + consumo_corrent);
+                }
+
+            }
+            else if (data.Contains("reset"))
+            {
+                Debug.WriteLine("Nucleo Reseted");
+            }
+            else if(data.Contains("PA_5 + PA_7 toogled"))
+            {
+                Debug.WriteLine("Relay Toogled");
+            }
+            else if(data.Contains("USBVALUE"))
+            {
+                Debug.WriteLine("Got USB");
+            }
+            else if(data.Contains("Val") && data.Contains("rise_A1") && data.Contains("fall_A3 "))
+            {
+                Debug.WriteLine(data);
+            }
+        }
+
+        private void Init_process()
+        {
+            UpdateTextEvolution("----------------------------");
+            UpdateTextEvolution("New Test Started");
+            Dispatcher.Invoke(new Action(() =>
+            {
+                StartTimer();
+                timer.Start();
+                time_elapsed = 0;
+                test_time_lbl.Visibility = Visibility.Visible;
+                STM_Board_Test = STM.LEDS;
+            }), DispatcherPriority.Normal);
+        }
+
+        public void StateMachine()
+        {
+            STM_Board_Test = STM.INIT;
+            ResetProgressBar();
+            ResetListBox();
+            
+            while (STM_Board_Test != STM.FINISH)
+            {
+                //Debug.WriteLine("State:" + STM_Board_Test);
+                switch (STM_Board_Test)
+                {
+                    case STM.INIT:
+                        Init_process();
+                        break;
+                    case STM.LEDS:
+                        Test_leds();
+                        break;
+                    case STM.RELAY:
+                        Test_Relay();
+                        break;
+                    case STM.RS232:
+                        Test_RS232();
+                        break;
+                    case STM.DEVICE_CURRENT:
+                        Test_Device_Current();
+                        break;
+                    case STM.ERROR:
+                        STM_Board_Test = STM.FINISH;
+                        InsertTestResult();
+                        Debug.WriteLine("Error");
+                        SetStartButtonState(true);
+                        break;
+                    case STM.FINISH:
+                        SetStartButtonState(true);
+                        Debug.WriteLine("Finish");
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            
+        }
+*/
