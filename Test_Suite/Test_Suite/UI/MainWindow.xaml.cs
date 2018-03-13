@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -38,6 +39,7 @@ namespace Test_Suite
         public MainWindow()
         {
             InitializeComponent();
+            board_state = "";
             ListSerialPort();
             Fetch_DB_Credentials();
         }
@@ -51,61 +53,75 @@ namespace Test_Suite
                 SetStartButtonState(true);
                 return;
             }
-            MDB_Board = new MDB_BOARD(new Init_State())
-            {
-                BoardOperator = operator_txtbox.Text,
-                BoardWorkstation = combo_workStation.Text,
-                SerialNumber = GetSerialNumber(),
-                BoardErrorDescription = "No Errors"
-            };
-            MDB_Board.ConnectToMysql(server, database, uid, password);
+            StartTesting();
+        }
 
-            //Check for a Valid DB Connection - Error Exit Program
-            if (!UpdateDBConnectionBox())
+        private void StartTesting()
+        {
+            Dispatcher.Invoke(new Action(() =>
             {
-                MessageBox.Show("Error Connecting to Database", "Check Database configuration", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
-                SetStartButtonState(true);
-                return;
-            }
-            //Check for a valid Serial Number or a Repeated One - Error Exit Program
-            if (String.IsNullOrEmpty(MDB_Board.SerialNumber) || MDB_Board.CheckRepeatedTest())
-            {
-                MessageBox.Show("Error In Serial Number", "Repeated Serial Number", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
-                SetStartButtonState(true);
-                return;
-            }
-            //So far so good...
-            ResetProgressBar();
-            //Assign Serial Communication Ports
-            MDB_Board.RS232Port = SerialCom.SelectedItem.ToString();
-            MDB_Board.NucleoSerialCommunication(CurrentPort.SelectedItem.ToString());
-            //Validate Serial Ports - Error Exit Program
-            if (!MDB_Board.CorrectPortConfig())
-            {
-                MDB_Board.CloseSerialPort();
-                MessageBox.Show("Wrong Port Selection", "Wrong Fields", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
-                SetStartButtonState(true);
-                return;
-            }
-            //Set Correct Power Supply
-            MDB_Board.SetMDBSupply();
-            //Everything is Ok
-            //Start Testing with scripts in a Thread
-            try
-            {
-                MDB_Board.InitializeList();
-                test_list.ItemsSource = MDB_Board.list_itens;
-                UpdateTextEvolution(Environment.NewLine + "---------------------------");
-                StartTimer();
-                Thread Test_Thread = new Thread(() => MDB_Board.StartTesting());
-                Test_Thread.Start();
-            }
-            catch
-            {
-                SetStartButtonState(true);
-                MessageBox.Show("Can't communicate with board" + Environment.NewLine + "Please check cable connection", "No communication with board", MessageBoxButton.OK, MessageBoxImage.Error);
-                timer.Stop();
-            }
+                MDB_Board = new MDB_BOARD(new Init_State());
+                MDB_Board.BoardOperator = operator_txtbox.Text;
+                MDB_Board.BoardWorkstation = combo_workStation.Text;
+                MDB_Board.SerialNumber = GetSerialNumber();
+                MDB_Board.BoardErrorDescription = "No Errors";
+
+                MDB_Board.ConnectToMysql(server, database, uid, password);
+
+                //Check for a Valid DB Connection - Error Exit Program
+                if (!UpdateDBConnectionBox())
+                {
+                    MessageBox.Show("Error Connecting to Database", "Check Database configuration", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
+                    SetStartButtonState(true);
+                    return;
+                }
+                //Check for a valid Serial Number or a Repeated One - Error Exit Program
+                if (String.IsNullOrEmpty(MDB_Board.SerialNumber) || MDB_Board.CheckRepeatedTest())
+                {
+                    MessageBox.Show("Error In Serial Number", "Repeated Serial Number", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
+                    SetStartButtonState(true);
+                    return;
+                }
+                //So far so good...
+                ResetProgressBar();
+                //Assign Serial Communication Ports
+                MDB_Board.RS232Port = SerialCom.SelectedItem.ToString();
+                MDB_Board.NucleoSerialCommunication(CurrentPort.SelectedItem.ToString());
+                //Validate Serial Ports - Error Exit Program
+                if (!MDB_Board.CorrectPortConfig())
+                {
+                    MDB_Board.CloseSerialPort();
+                    MessageBox.Show("Wrong Port Selection", "Wrong Fields", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
+                    SetStartButtonState(true);
+                    return;
+                }
+                //Set Correct Power Supply
+                if (!MDB_Board.SetUSBSupply())
+                {
+                    MDB_Board.CloseSerialPort();
+                    MessageBox.Show("Wrong Supply in MDB Board" + Environment.NewLine + "Please Check all Connections", "Wrong Connection", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation);
+                    SetStartButtonState(true);
+                    return;
+                }
+                //Everything is Ok
+                //Start Testing with scripts in a Thread
+
+                try
+                {
+                    MDB_Board.InitializeList();
+                    test_list.ItemsSource = MDB_Board.list_itens;
+                    UpdateTextEvolution(Environment.NewLine + "---------------------------");
+                    StartTimer();
+                    Thread Test_Thread = new Thread(() => MDB_Board.StartTesting());
+                    Test_Thread.Start();
+                }
+                catch
+                {
+                    SetStartButtonState(true);
+                    MessageBox.Show("Can't communicate with board" + Environment.NewLine + "Please check cable connection", "No communication with board", MessageBoxButton.OK, MessageBoxImage.Error);
+                    timer.Stop();
+                }
+            }), DispatcherPriority.Normal);
         }
 
         private string GetSerialNumber()
@@ -174,9 +190,10 @@ namespace Test_Suite
                 MDB_Board.BoardTime = DateTime.Now + " - " + TimeSpan.FromSeconds(stopWatch.Elapsed.TotalSeconds).ToString(@"hh\:mm\:ss");
                 board_state = MDB_Board.State.ToString();
                 UpdateTextEvolution(MDB_Board.UpdateMessage);
+                MDB_Board.UpdateMessage = "";
                 test_list.ItemsSource = null;
                 test_list.ItemsSource = MDB_Board.list_itens;
-                if (!board_state.Contains("SQL") && !board_state.Contains("Error") && !board_state.Contains("Finish"))
+                if (!board_state.Contains("SQL") && !board_state.Contains("Error") && !board_state.Contains("Finish") && !board_state.Contains("Init"))
                     UpdateProgressBar(progress_bar_increment);
                 if(MDB_Board.BoardTestStatus == 1)
                 {   
@@ -189,9 +206,19 @@ namespace Test_Suite
             }
             if (board_state.Contains("Finish"))
             {
-                SetStartButtonState(true);
-                if (MDB_Board.DB_Connection != null && MDB_Board.DB_Connection.State == ConnectionState.Open)
-                    MDB_Board.DB_Connection.Close();
+                if(MDB_Board.BoardTestStatus == 1)
+                {
+                    MessageBox.Show("Test Success", "Finish", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+                    Thread.Sleep(100);
+                    StartTesting();
+                }
+                else
+                {
+                    SetStartButtonState(true);
+                    if (MDB_Board.DB_Connection != null && MDB_Board.DB_Connection.State == ConnectionState.Open)
+                        MDB_Board.DB_Connection.Close();
+                }
+                
                 timer.Stop();
             }
                 
@@ -254,7 +281,13 @@ namespace Test_Suite
                 Dispatcher.Invoke(new Action(() =>
                 {
                     DoubleAnimation doubleanimation = new DoubleAnimation(progress_bar.Value + progress_bar_inc, duration);
+                    
                     progress_bar.BeginAnimation(ProgressBar.ValueProperty, doubleanimation);
+                    if (progress_bar.Value + progress_bar_inc >= 90)
+                    {
+                        progress_bar.BeginAnimation(ProgressBar.ValueProperty, null);
+                        progress_bar.Background = Brushes.Green;
+                    }
                 }), DispatcherPriority.Background);
             }
             
@@ -276,6 +309,9 @@ namespace Test_Suite
             Dispatcher.Invoke(new Action(() =>
             {
                 test_evolution_txtbox.Text += text + Environment.NewLine;
+                test_evolution_txtbox.Focus();
+                test_evolution_txtbox.CaretIndex = test_evolution_txtbox.Text.Length;
+                test_evolution_txtbox.ScrollToEnd();
             }), DispatcherPriority.Background);
         }
 
@@ -373,6 +409,22 @@ namespace Test_Suite
                 MessageBox.Show("Failed to load configuration file");
             }
 
+        }
+
+        private void operator_txtbox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            Regex regex = new Regex("^[a-zA-Z]+$");
+            e.Handled = !regex.IsMatch(e.Text);
+        }
+
+        private void RefreshBtn1_Click(object sender, RoutedEventArgs e)
+        {
+            ListSerialPort();
+        }
+
+        private void RefreshBtn2_Click(object sender, RoutedEventArgs e)
+        {
+            ListSerialPort();
         }
     }
 }

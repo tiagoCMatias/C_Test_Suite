@@ -19,16 +19,8 @@ namespace Test_Suite
     class Init_State : State
     {
         
-
         public override void GoToNextState(MDB_BOARD board, bool state)
         {
-            state_number = 0;
-            //board.LastTestNumber = state_number;
-            //board.UpdateMessageResult = state ? "Board Initialized" : "Failed to Initialize board";
-            //board.LastTestResult = state;
-
-            
-
             state_number = 0;
             if(state)
                 board.State = new Led_State();
@@ -38,12 +30,21 @@ namespace Test_Suite
 
         public override void Handle(MDB_BOARD board)
         {
-            Debug.WriteLine("Init Handle");
-
-           /* if (board.NucleoPort != null)
-                board.CloseSerialPort();
-            */
+            board.test_ongoing = true;
             GoToNextState(board, true);
+        }
+    }
+
+    class Null_state : State
+    {
+
+        public override void GoToNextState(MDB_BOARD board, bool state)
+        {
+
+        }
+
+        public override void Handle(MDB_BOARD board)
+        {
         }
     }
 
@@ -60,7 +61,9 @@ namespace Test_Suite
             board.UpdateMessage = "Error detected during testing";
             Thread.Sleep(1000);
             Debug.WriteLine("ERROR");
-            if(board.NucleoPort.IsOpen)
+            board.error_state = true;
+            board.test_ongoing = false;
+            if (board.NucleoPort.IsOpen)
                 board.CloseSerialPort();
 
             board.State = new SQL_Update();
@@ -77,7 +80,6 @@ namespace Test_Suite
         public override void Handle(MDB_BOARD board)
         {
             Debug.WriteLine("Finish Handle");
-            //context.State = new RelayState();
         }
     }
 }

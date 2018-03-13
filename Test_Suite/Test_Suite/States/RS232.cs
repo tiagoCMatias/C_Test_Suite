@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace Test_Suite
 {
@@ -14,8 +15,9 @@ namespace Test_Suite
 
         public override void GoToNextState(MDB_BOARD board, bool state)
         {
-            state_number = 3;
-            board.test_result[state_number] = state ? 1 : 0;
+            state_number = board.MDB_MOD ? 8 : 3;
+
+            board.test_result[3] = state ? 1 : 0;
             board.UpdateList(state_number, state);
 
             if (state)
@@ -25,7 +27,10 @@ namespace Test_Suite
             }
             else
             {
-                board.BoardErrorDescription = "RS232 Test Failed";
+                MessageBox.Show("RS232 Test Fail", "Test Fail", MessageBoxButton.OK, MessageBoxImage.Error);
+                //Debug.WriteLine("RELAY FAIL");
+               
+                board.BoardErrorDescription = board.MDB_MOD ? "RS232 Test Failed - Second Test" : "RS232 Test Failed - First Test";
                 board.UpdateMessage = "RS232 Test Failed";
                 board.State = new ErrorState();
             }

@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace Test_Suite
 {
@@ -13,9 +14,9 @@ namespace Test_Suite
     {
         public override void GoToNextState(MDB_BOARD board, bool state)
         {
-            state_number = 2;
+            state_number = board.MDB_MOD ? 7 : 2;
 
-            board.test_result[state_number] = state ? 1 : 0;
+            board.test_result[2] = state ? 1 : 0;
             board.UpdateList(state_number, state);
 
             if (state)
@@ -25,7 +26,7 @@ namespace Test_Suite
             }
             else
             {
-                board.BoardErrorDescription = "Relay Test Failed";
+                board.BoardErrorDescription = board.MDB_MOD ? "Relay Test Failed - Second Test" : "Relay Test Failed - First Test";
                 board.UpdateMessage = "Relay Test Failed";
                 board.State = new ErrorState();
             }
@@ -59,16 +60,7 @@ namespace Test_Suite
 
                 string[] lines = board.Start_script("--relay");
 
-                if (lines.Length >= 9 &&
-                    lines[0].Contains("[M >]M,TEST_REL") &&
-                   lines[1].Contains("[M <]m,ACK") &&
-                   lines[2].Contains("[M <]checking RELAY...") &&
-                   lines[3].Contains("[M <]ON") &&
-                   lines[4].Contains("[M <]OFF") &&
-                   lines[5].Contains("[M <]ON") &&
-                   lines[6].Contains("[M <]OFF") &&
-                   lines[7].Contains("[M <]-------------------------") &&
-                   lines[8].Contains("- closing mdb connection"))
+                if (lines.Length >= 5)
                 {
                     board.NucleoMessage = "";
                     Thread.Sleep(1000);
@@ -79,11 +71,14 @@ namespace Test_Suite
                     foreach (var item in listStrLineElements)
                     {
                         var number = int.Parse(Regex.Match(item, "\\d+").Value);
-
+                        /*
                         if (number > 2 || number <= 0)
                         {
-                            Debug.WriteLine("ops");
-                        }
+                            MessageBox.Show("Relay Count Fail", "Test Fail", MessageBoxButton.OK, MessageBoxImage.Error);
+                            //Debug.WriteLine("RELAY FAIL");
+                            GoToNextState(board, false);
+                            return;
+                        }*/
                         Debug.WriteLine(item.ToString());
                     }
 

@@ -25,7 +25,7 @@
             </Grid>
         </DataTemplate>
     </Controls:MetroWindow.IconTemplate>
-    <DockPanel HorizontalAlignment="Stretch" Margin="40,40,20,20">
+    <DockPanel HorizontalAlignment="Stretch" Margin="20,20,10,10">
         <Grid >
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -48,11 +48,11 @@
             </Grid.ColumnDefinitions>
             <!-- COLUMN = 0-->
             <DockPanel Grid.Row="1" Margin="5,5,5,5"  Grid.Column="0" >
-                <Button Name="start_test_button" MinWidth="80" Margin="5,5,5,0" Content="Start Test" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Stretch" Click="Start_test_button_Click" />
+                <Button Name="start_test_button" MinWidth="80" Margin="5,5,5,0" Content="Start Test" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Stretch" Click="Start_test_button_Click" Width="200" />
             </DockPanel>
             <DockPanel Grid.Row="2" Margin="5,5,5,5" HorizontalAlignment="Stretch"  Grid.Column="0" >
                 <TextBlock Text="Operator:" Margin="10,2,2,2" Width="80"></TextBlock>
-                <TextBox Name="operator_txtbox" Margin="3" Text="Teste_Operator"  />
+                <TextBox Name="operator_txtbox" Margin="3" Text="Teste_Operator"  PreviewTextInput="operator_txtbox_PreviewTextInput"  />
             </DockPanel>
             <DockPanel Grid.Row="3" Margin="5,5,5,5"  Grid.Column="0" >
                 <TextBlock Margin="10,2,2,2" Text="Work Station:" Width="80"></TextBlock>
@@ -62,17 +62,27 @@
                     <ComboBoxItem Name="cbi3">Workstation 3</ComboBoxItem>
                 </ComboBox>
             </DockPanel>
-            <DockPanel Grid.Row="4" Margin="5,5,5,5"  Grid.Column="0" >
+            <DockPanel Grid.Row="4" Margin="5,5,0,5" HorizontalAlignment="Stretch" Grid.Column="0" >
                 <TextBlock Margin="10,2,2,2" Text="Serial Ports:" Width="80"></TextBlock>
-                <ComboBox SelectedIndex="0" x:Name="SerialCom" Margin="3" >
+                <ComboBox SelectedIndex="0" FlowDirection="LeftToRight" HorizontalContentAlignment="Right" x:Name="SerialCom"   >
                     <ComboBoxItem Name="port1" ></ComboBoxItem>
                 </ComboBox>
+                <Button Width="30"  Name="RefreshBtn2" HorizontalAlignment="Right" Margin="0,0,0,0" Click="RefreshBtn2_Click">
+                    <StackPanel>
+                        <Image Source="/images/refresh.png" />
+                    </StackPanel>
+                </Button>
             </DockPanel>
-            <DockPanel Grid.Row="5" Margin="5,5,5,5"  Grid.Column="0" >
-                <TextBlock Margin="10,2,2,2" Text="Nucleo Port:" Width="80"></TextBlock>
-                <ComboBox SelectedIndex="0" x:Name="CurrentPort" Margin="3"  >
+            <DockPanel Grid.Row="5" Margin="5,5,0,5"  Grid.Column="0" >
+                <TextBlock Margin="10,2,2,2" Text="DAQ Module:" Width="80"></TextBlock>
+                <ComboBox SelectedIndex="0" x:Name="CurrentPort" >
                     <ComboBoxItem Name="port2" ></ComboBoxItem>
                 </ComboBox>
+                <Button Name="RefreshBtn1" Width="30" HorizontalAlignment="Right" Margin="0,0,0,0" Click="RefreshBtn1_Click">
+                    <StackPanel>
+                        <Image Source="/images/refresh.png" />
+                    </StackPanel>
+                </Button>
             </DockPanel>
             <DockPanel Grid.Row="6"  Margin="20,20,20,20" Grid.Column="0" >
                 <Image HorizontalAlignment="Center" MinWidth="250" Source="/images/logo.png"/>
@@ -81,17 +91,17 @@
                 <TextBlock FontSize="16" Text="Test Historic:" ></TextBlock>
             </StackPanel>
             <TextBox x:Name="test_historic_txtbox" Margin="5,5,5,5" IsReadOnly = "True" Grid.Row="8" Grid.Column="0" HorizontalAlignment="Stretch" MinHeight="50" />
-            <TextBox Grid.Row="9" Grid.Column="3" Name="test_time_lbl" BorderThickness="0" Margin="0,10,20,-20" HorizontalContentAlignment="Right" MinWidth="100" VerticalAlignment="Center" HorizontalAlignment="Right"  Text="{Binding TimeElapsed}"/>
+            <TextBox Grid.Row="9" Grid.Column="2" Name="test_time_lbl" BorderThickness="0" Margin="0,0,20,52" HorizontalContentAlignment="Right" MinWidth="100" VerticalAlignment="Center" HorizontalAlignment="Right"  Text="{Binding TimeElapsed}" Grid.RowSpan="2" Height="22"/>
             <DockPanel Grid.Row="11" VerticalAlignment="Center"  LastChildFill="True">
                 <TextBox Name="db_status_txtbox" Margin="5,12" HorizontalContentAlignment="Center"  Text="Database connection" IsReadOnly = "True" />
             </DockPanel>
-            <ProgressBar Name="progress_bar" Grid.Row="11" Grid.Column="1" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" Margin="30,0,20,0" ></ProgressBar>
+            <ProgressBar Name="progress_bar" Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" Margin="30,17,20,21" Height="Auto" ></ProgressBar>
 
             <!--FIM DE COLUMN = 0-->
 
             <!-- COLUMN = 1-->
             <Label FontSize="16" Content="Test Evolution" HorizontalContentAlignment="Center" HorizontalAlignment="Stretch" Grid.Row="0"  Grid.Column="1" Margin="30,0,10,0" BorderThickness="0" BorderBrush="#FFCBCBCB" Foreground="#FF707070" FontFamily="Segoe UI, Lucida Sans Unicode, Verdana" Background="#00F3F3EE" />
-            <TextBox x:Name="test_evolution_txtbox" Margin="30,0,10,0" Grid.Row="1" Background="White" Grid.RowSpan="8" Grid.Column="1" BorderBrush="#FFE4E4E4" />
+            <TextBox x:Name="test_evolution_txtbox" Margin="30,0,10,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto"  Grid.Row="1" Background="White" Grid.RowSpan="8" Grid.Column="1" BorderBrush="#FFE4E4E4" />
             <!--FIM DE COLUMN = 1 -->
 
             <!-- COLUMN = 2-->

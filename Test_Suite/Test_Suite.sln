@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test_Suite", "Test_Suite\Test_Suite.csproj", "{9824FE70-C3BA-415A-BD14-19CD62234C16}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MDB_Test", "Test_Suite\MDB_Test.csproj", "{9824FE70-C3BA-415A-BD14-19CD62234C16}"
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "MDBSetup", "MDBSetup\MDBSetup.vdproj", "{0AB6FED7-7FDA-4336-B0C4-F34767BB96BE}"
 EndProject

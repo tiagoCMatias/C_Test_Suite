@@ -12,8 +12,8 @@ namespace Test_Suite
     class MDB_BOARD : Board_Class
     {
         private State _state;
-        private string relayOn = "PA_5 + PA_7 Off";
-        private string relayOff = "PA_5 + PA_7 On";
+        private string relayOn = "RELAY ON";
+        private string relayOff = "RELAY OFF";
         private string connectionString;
 
         public SerialPort NucleoPort { get; set; }
@@ -23,7 +23,9 @@ namespace Test_Suite
         public MySqlConnection DB_Connection { get; set; }
         public string SqlTable = "mdb_usb_ms";
         public string UpdateMessage { get; set; }
-        public int[] test_result = new int[6];
+        public int[] test_result = new int[10];
+        public bool error_state { get; set; }
+        public bool test_ongoing { get; set; }
 
         public List<Test_list_item> list_itens = new List<Test_list_item>();
 
@@ -49,11 +51,15 @@ namespace Test_Suite
         {
             list_itens.Clear();
             list_itens.Insert(0, new Test_list_item() { Name = "USB PORT B", Path = null, });
-            list_itens.Insert(1, new Test_list_item() { Name = "LEDS", Path = null, });
-            list_itens.Insert(2, new Test_list_item() { Name = "RELAY", Path = null, });
-            list_itens.Insert(3, new Test_list_item() { Name = "Serial Port", Path = null, });
-            list_itens.Insert(4, new Test_list_item() { Name = "DEVICE CURRENT", Path = null, });
+            list_itens.Insert(1, new Test_list_item() { Name = "LEDS 1", Path = null, });
+            list_itens.Insert(2, new Test_list_item() { Name = "RELAY 1", Path = null, });
+            list_itens.Insert(3, new Test_list_item() { Name = "Serial Port 1", Path = null, });
+            list_itens.Insert(4, new Test_list_item() { Name = "DEVICE CURRENT 1", Path = null, });
             list_itens.Insert(5, new Test_list_item() { Name = "USB PORT A", Path = null, });
+            list_itens.Insert(6, new Test_list_item() { Name = "LEDS 2", Path = null, });
+            list_itens.Insert(7, new Test_list_item() { Name = "RELAY 2", Path = null, });
+            list_itens.Insert(8, new Test_list_item() { Name = "Serial Port 2", Path = null, });
+            list_itens.Insert(9, new Test_list_item() { Name = "DEVICE CURRENT 2", Path = null, });
         }
 
         public void UpdateList(int index_list, bool test_status)
@@ -64,11 +70,15 @@ namespace Test_Suite
             switch (index_list)
             {
                 case 0: text_to_update = "USB PORT B"; break;
-                case 1: text_to_update = "LEDS"; break;
-                case 2: text_to_update = "RELAY"; break;
-                case 3: text_to_update = "Serial Port"; break;
-                case 4: text_to_update = "DEVICE CURRENT"; break;
+                case 1: text_to_update = "LEDS 1"; break;
+                case 2: text_to_update = "RELAY 1"; break;
+                case 3: text_to_update = "Serial Port 1"; break;
+                case 4: text_to_update = "DEVICE CURRENT 1"; break;
                 case 5: text_to_update = "USB PORT A"; break;
+                case 6: text_to_update = "LEDS 2"; break;
+                case 7: text_to_update = "RELAY 2"; break;
+                case 8: text_to_update = "Serial Port 2"; break;
+                case 9: text_to_update = "DEVICE CURRENT 2"; break;
             }
             list_itens.Insert(index_list, new Test_list_item() { Name = text_to_update, Path = (test_status) ? @"../images/pass.png" : @"../images/fail.png" });
         }
@@ -146,31 +156,36 @@ namespace Test_Suite
             }
         }
 
-        public void SetUSBSupply()
+        public bool SetUSBSupply()
         {
             if (NucleoPort != null && NucleoPort.IsOpen)
             {
                 //turn off relay send "2"
                 NucleoMessage = "";
-                Thread.Sleep(1500);
+                Thread.Sleep(3000);
                 SendToNucleo("2");
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
 
                 if (NucleoMessage.Contains(relayOff))
                 {
                     Debug.WriteLine("MDB_MOD false");
                     MDB_MOD = false;
+                    Thread.Sleep(100);
+                    return true;
                 }
                 else
                 {
-                    Debug.WriteLine("MDB_MOD true");
+                    Debug.WriteLine("MDB_MOD true - " + NucleoMessage);
                     MDB_MOD = true;
+                    Thread.Sleep(100);
+                    return false;
                 }
 
             }
+            return false;
         }
 
-        public void SetMDBSupply()
+        public bool SetMDBSupply()
         {
             if (NucleoPort != null && NucleoPort.IsOpen)
             {
@@ -185,14 +200,18 @@ namespace Test_Suite
                 {
                     Debug.WriteLine("MDB_MOD true");
                     MDB_MOD = true;
+                    Thread.Sleep(100);
+                    return true;
                 }
                 else
                 {
                     Debug.WriteLine("MDB - false");
                     MDB_MOD = false;
+                    Thread.Sleep(100);
+                    return false;
                 }
-
             }
+            return false;
         }
         
         public override bool ConnectToMysql(string server, string database, string uid, string password)
@@ -267,9 +286,9 @@ namespace Test_Suite
 
                 MySqlCommand command = DB_Connection.CreateCommand();
                 command.CommandText = "INSERT INTO " + SqlTable + " ( `operator`, `sn`, `workstation`, `test_time`, `test_flag`, `usb_type_b`, " +
-                    "`usb_type_a`, `relay`, `rs232`, `device_current`, `test_error`, `test_leds`) VALUES (" +
+                    "`usb_type_a`, `relay`, `rs232`, `device_current`, `test_error`, `test_leds`, `device_read_current`, `device_usb_volt`) VALUES (" +
                     "'" + BoardOperator + "', '" + SerialNumber + "', '" + BoardWorkstation + "', '" + BoardTime + "', '" + BoardTestStatus + "', '" + usb_a +
-                    "' , '" + usb_b + "', '" + relay + "', '" + rs232 + "', '" + test_current + "', '" + BoardErrorDescription + "', '" + leds + "');";
+                    "' , '" + usb_b + "', '" + relay + "', '" + rs232 + "', '" + test_current + "', '" + BoardErrorDescription + "', '" + leds + "', '"+ BoardCurrent  +"', '"+ BoardUSBVolt +"');";
 
                 Debug.WriteLine(command.CommandText);
                     

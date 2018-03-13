@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -81,6 +83,12 @@ namespace Test_Suite
                     //var assembly = Assembly.GetExecutingAssembly();
                     //var resourceName = "Redundix.Files.config.txt";
                     //var textStreamWriter = new StreamWriter(Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName));
+                    /*
+                    FileInfo fInfo = new FileInfo(@"Files/config.txt");
+                    FileSecurity fSecurity = fInfo.GetAccessControl();
+                    fSecurity.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.WorldSid, null), FileSystemRights.Modify, InheritanceFlags.ContainerInherit, PropagationFlags.None, AccessControlType.Allow));
+                    fInfo.SetAccessControl(fSecurity);
+                    */
 
                     using (var writer = new StreamWriter(@"Files/config.txt"))
                     {

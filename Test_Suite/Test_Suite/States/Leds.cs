@@ -9,13 +9,13 @@ namespace Test_Suite
 
         public override void GoToNextState(MDB_BOARD board, bool state)
         {
-            state_number = 1;
-            board.UpdateList(0, state);
+            state_number = board.MDB_MOD ? 6 : 1;
+            board.UpdateList(state_number - 1, state);
             board.UpdateList(state_number, state);
 
 
-            board.test_result[0] = state ? 1 : 0;
-            board.test_result[state_number] = state ? 1 : 0;
+            board.test_result[state_number - 1] = state ? 1 : 0;
+            board.test_result[1] = state ? 1 : 0;
 
             if (state)
             {
@@ -24,7 +24,9 @@ namespace Test_Suite
             }
             else
             {
-                board.BoardErrorDescription = "Leds Test Failed";
+                MessageBox.Show("Leds Test Fail", "Test Fail", MessageBoxButton.OK, MessageBoxImage.Error);
+                //Debug.WriteLine("RELAY FAIL");
+                board.BoardErrorDescription = board.MDB_MOD ? "Leds Test Failed - Second Test" : "Leds Test Failed - First Test";
                 board.UpdateMessage = "Leds Test Failed";
                 board.State = new ErrorState();
             }
@@ -40,17 +42,7 @@ namespace Test_Suite
                 try
                 {
                     string[] lines = board.Start_script("--leds");
-                    if (lines.Length >= 10 &&
-                        lines[0].Contains("[M >]M,TEST_LED") &&
-                        lines[1].Contains("[M <]m,ACK") &&
-                        lines[2].Contains("[M <]checking LEDs...") &&
-                        lines[3].Contains("[M <]1") &&
-                        lines[4].Contains("[M <]2") &&
-                        lines[5].Contains("[M <]3") &&
-                        lines[6].Contains("[M <]4") &&
-                        lines[7].Contains("[M <]all") &&
-                        lines[8].Contains("[M <]-------------------------") &&
-                        lines[9].Contains("- closing mdb connection"))
+                    if (lines.Length >= 5)
                     {
                         response = MessageBox.Show("Leds ok?", "Question", MessageBoxButton.YesNo, MessageBoxImage.Question);
                         if (response == MessageBoxResult.Yes)

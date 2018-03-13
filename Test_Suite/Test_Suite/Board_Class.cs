@@ -19,6 +19,7 @@ namespace Test_Suite
         public string SerialNumber { get; set; }
         public string BoardTime { get; set; }
         public string BoardCurrent { get; set; }
+        public string BoardUSBVolt { get; set; }
         public string BoardWorkstation { get; set; }
         public string BoardErrorDescription { get; set; }
         public int BoardTestStatus { get; set; }
