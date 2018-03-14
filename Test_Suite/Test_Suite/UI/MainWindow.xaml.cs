@@ -251,7 +251,7 @@ namespace Test_Suite
         {
             try
             {
-                String fileName = @"Files\\linulus-test-system.pdf";
+                String fileName = @"Files\\mdb-test-system.pdf";
                 Process process = new Process();
                 process.StartInfo.FileName = fileName;
                 process.Start();

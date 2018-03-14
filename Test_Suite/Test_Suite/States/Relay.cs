@@ -71,14 +71,14 @@ namespace Test_Suite
                     foreach (var item in listStrLineElements)
                     {
                         var number = int.Parse(Regex.Match(item, "\\d+").Value);
-                        /*
+                        
                         if (number > 2 || number <= 0)
                         {
                             MessageBox.Show("Relay Count Fail", "Test Fail", MessageBoxButton.OK, MessageBoxImage.Error);
                             //Debug.WriteLine("RELAY FAIL");
                             GoToNextState(board, false);
                             return;
-                        }*/
+                        }
                         Debug.WriteLine(item.ToString());
                     }
 

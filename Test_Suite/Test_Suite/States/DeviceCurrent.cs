@@ -44,7 +44,7 @@ namespace Test_Suite
                 }
                 try
                 {
-                    if (board.BoardCurrent != null && int.Parse(board.BoardUSBVolt) > 0)
+                    if (board.BoardCurrent != null && int.Parse(board.BoardUSBVolt) > 2500)
                     {
                         GoToNextState(board, true);
                     }
